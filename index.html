@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#07131d">
+<title>SATHANA 2040 — Village Futures</title>
+<style>
+:root{--bg:#07131d;--panel:rgba(7,19,29,.88);--line:rgba(159,219,232,.22);--cyan:#6ce7ef;--gold:#ffd27a;--white:#f4fbff}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--white);font-family:Inter,system-ui,Segoe UI,sans-serif}
+#game{position:fixed;inset:0}canvas{display:block}
+.hud{position:fixed;inset:0;pointer-events:none}
+.top{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.brand,.stats,.panel,.toast{background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(14px);box-shadow:0 10px 35px #0005;border-radius:16px}
+.brand{padding:11px 15px}.brand strong{display:block;letter-spacing:.14em;font-size:13px;color:var(--cyan)}.brand span{font-size:11px;color:#b8cbd4}
+.stats{padding:10px 13px;display:flex;gap:15px;font-size:12px}.stats b{color:var(--gold);display:block;font-size:15px}
+.actions{position:absolute;top:84px;right:14px;display:flex;flex-direction:column;gap:8px;pointer-events:auto}
+button,select{font:inherit;color:var(--white);background:#102936;border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer}
+button:hover{border-color:var(--cyan);background:#173c49}button.primary{background:linear-gradient(120deg,#087d8a,#155d73);border-color:#62d9e2}
+.panel{position:absolute;left:14px;bottom:14px;width:min(340px,calc(100vw - 28px));padding:14px;pointer-events:auto}
+.panel h2{font-size:14px;margin:0 0 7px;color:var(--cyan);letter-spacing:.08em}.panel p{font-size:12px;line-height:1.5;color:#c1d2da;margin:0 0 10px}
+.panel .row{display:flex;gap:7px;flex-wrap:wrap}.panel button{font-size:12px;flex:1}
+.help{position:absolute;bottom:14px;right:14px;width:min(250px,calc(100vw - 28px));padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;font-size:11px;line-height:1.55;color:#c1d2da}
+.help b{color:var(--gold)}.toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);padding:13px 18px;font-size:13px;display:none;text-align:center;max-width:85vw}
+.modal{position:fixed;inset:0;background:#02080dcc;display:none;align-items:center;justify-content:center;padding:18px;z-index:5}
+.modal.open{display:flex}.dialog{width:min(520px,100%);max-height:85vh;overflow:auto;background:#0b202c;border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 25px 80px #0009}
+.dialog h2{margin:0 0 8px;color:var(--cyan)}.dialog p,.dialog li{font-size:13px;line-height:1.6;color:#c5d7df}.dialog .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.dialog button{width:100%}.dialog .close{margin-top:12px;width:auto;float:right}
+#mobileControls{display:none;position:fixed;bottom:22px;right:18px;gap:8px;pointer-events:auto}
+#mobileControls button{width:54px;height:54px;border-radius:50%;font-size:18px;background:#0a2636dd}
+#joystick{position:fixed;bottom:24px;left:20px;width:116px;height:116px;border-radius:50%;border:1px solid #8cecf477;background:#071d2b88;display:none;pointer-events:auto;touch-action:none}
+#stick{position:absolute;width:44px;height:44px;left:35px;top:35px;border-radius:50%;background:#6ce7efaa;border:1px solid #d9ffff}
+@media(max-width:700px){.stats{gap:9px;padding:8px;font-size:10px}.stats b{font-size:13px}.brand{padding:9px 11px}.actions{top:75px}.actions button{padding:8px;font-size:11px}.help{display:none}.panel{bottom:10px}.panel p{font-size:11px}#mobileControls,#joystick{display:block}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div class="hud">
+ <div class="top">
+  <div class="brand"><strong>SATHANA 2040</strong><span id="tagline">Village Futures · Community Sandbox</span></div>
+  <div class="stats"><div><b id="points">0</b><span id="pointsLabel">IDEA POINTS</span></div><div><b id="tasks">0/4</b><span id="tasksLabel">MISSIONS</span></div></div>
+ </div>
+ <div class="actions">
+  <button id="langBtn">हिन्दी / EN</button><button id="missionBtn">📍 Missions</button><button id="buildBtn">🏗 Build</button><button id="aboutBtn">ⓘ About</button>
+ </div>
+ <div class="panel">
+  <h2 id="welcome">WELCOME TO SATHANA 2040</h2>
+  <p id="objective">Explore the village, discover community spaces and share ideas for a better future. This is a fictional learning sandbox, not an official village map.</p>
+  <div class="row"><button class="primary" id="interactBtn">Explore nearby</button><button id="resetBtn">↻ Reset progress</button></div>
+ </div>
+ <div class="help"><b>DESKTOP CONTROLS</b><br>W A S D / Arrow keys — Move<br>Mouse drag — Rotate camera<br>Space — Interact with nearby places<br><br><b>TIP</b> Visit the glowing markers to discover a community challenge.</div>
+ <div class="toast" id="toast"></div>
+</div>
+<div id="joystick"><div id="stick"></div></div>
+<div id="mobileControls"><button id="jumpBtn">↟</button><button id="actionBtn">E</button></div>
+<div class="modal" id="modal"><div class="dialog"><div id="modalContent"></div><button class="close" id="closeModal">Close ✕</button></div></div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+const $=id=>document.getElementById(id);
+let lang='en',score=Number(localStorage.getItem('sathana-score')||0),done=JSON.parse(localStorage.getItem('sathana-done')||'[]');
+const words={
+ en:{tag:'Village Futures · Community Sandbox',points:'IDEA POINTS',missions:'MISSIONS',welcome:'WELCOME TO SATHANA 2040',objective:'Explore the village, discover community spaces and share ideas for a better future. This is a fictional learning sandbox, not an official village map.',near:'Explore nearby',missionTitle:'COMMUNITY MISSIONS',missionIntro:'Visit the glowing locations and complete short civic-learning challenges.',buildTitle:'BUILD A BETTER VILLAGE',buildIntro:'Choose a public facility to add to your imaginary village plan. Building is for learning only; it does not represent approved funding or construction.',aboutTitle:'ABOUT THIS GAME',about:'SATHANA 2040 is a nonpartisan community-learning game. It is not an official Gram Panchayat service, a government map, or a promise of public works. Everyone can explore and contribute ideas freely.',complete:'Challenge completed!',already:'You have completed this challenge.',reset:'Progress reset.',buildDone:'Added to your village vision!',missions:['Clean & green streets','Water for every home','Learning and libraries','Safe play spaces'],questions:['Which action helps keep a street clean?','Why should water be conserved?','What makes a library useful?','What makes a playground safer?'],answers:[['Use a public bin','Dump waste in a drain','Burn plastic'],['It is a shared resource','It never runs out','Only farms need it'],['Books and free learning','Locked doors','No reading space'],['Maintain equipment','Broken lights','Open drains']],correct:[0,0,0,0]},
+ hi:{tag:'गाँव का भविष्य · सामुदायिक खेल',points:'विचार अंक',missions:'मिशन',welcome:'SATHANA 2040 में आपका स्वागत है',objective:'गाँव में घूमें, सामुदायिक स्थान खोजें और बेहतर भविष्य के लिए विचार साझा करें। यह सीखने के लिए बनाया गया काल्पनिक गेम है, आधिकारिक गाँव का नक्शा नहीं।',near:'आसपास देखें',missionTitle:'सामुदायिक मिशन',missionIntro:'चमकते स्थानों पर जाएँ और नागरिक जागरूकता से जुड़े छोटे सवाल हल करें।',buildTitle:'बेहतर गाँव की कल्पना करें',buildIntro:'अपने काल्पनिक गाँव की योजना में एक सार्वजनिक सुविधा जोड़ें। यह केवल सीखने के लिए है, स्वीकृत बजट या निर्माण का वादा नहीं।',aboutTitle:'इस गेम के बारे में',about:'SATHANA 2040 एक गैर-पक्षपाती सामुदायिक शिक्षण गेम है। यह आधिकारिक ग्राम पंचायत सेवा, सरकारी नक्शा या विकास कार्यों का वादा नहीं है। सभी लोग स्वतंत्र रूप से विचार साझा कर सकते हैं।',complete:'चुनौती पूरी हुई!',already:'आप यह चुनौती पूरी कर चुके हैं।',reset:'प्रगति रीसेट हो गई।',buildDone:'आपकी गाँव की कल्पना में जोड़ा गया!',missions:['स्वच्छ और हरी सड़कें','हर घर के लिए पानी','शिक्षा और पुस्तकालय','सुरक्षित खेल स्थान'],questions:['सड़क साफ रखने में कौन-सा काम मदद करता है?','पानी बचाना क्यों ज़रूरी है?','पुस्तकालय को उपयोगी क्या बनाता है?','खेल का मैदान सुरक्षित कैसे बनता है?'],answers:[['कूड़ेदान का उपयोग','नाली में कचरा डालना','प्लास्टिक जलाना'],['यह साझा संसाधन है','यह कभी खत्म नहीं होता','केवल खेतों को चाहिए'],['किताबें और मुफ्त शिक्षा','बंद दरवाज़े','पढ़ने की जगह नहीं'],['उपकरणों की देखभाल','टूटी लाइटें','खुली नालियाँ']],correct:[0,0,0,0]}
+};
+function t(k){return words[lang][k]}
+function updateUI(){ $('points').textContent=score;$('tasks').textContent=done.length+'/4';$('tagline').textContent=t('tag');$('pointsLabel').textContent=t('points');$('tasksLabel').textContent=t('missions');$('welcome').textContent=t('welcome');$('objective').textContent=t('objective');$('interactBtn').textContent=t('near');}
+function toast(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',2300)}
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x8cc6df);scene.fog=new THREE.Fog(0x8cc6df,38,105);
+const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,.1,250);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;$('game').appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xe3f7ff,0x6d7047,2));
+const sun=new THREE.DirectionalLight(0xffe3b1,2.1);sun.position.set(-25,35,20);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene.add(sun);
+function mat(c,rough=.85){return new THREE.MeshStandardMaterial({color:c,roughness:rough})}
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(180,180),mat(0x829b58));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+const roadMat=mat(0x555b5b),edgeMat=mat(0xd6c99b);
+function road(x,z,w,d){let m=new THREE.Mesh(new THREE.BoxGeometry(w,.08,d),roadMat);m.position.set(x,.04,z);m.receiveShadow=true;scene.add(m);let stripe=new THREE.Mesh(new THREE.BoxGeometry(w,.085,.12),edgeMat);stripe.position.set(x,.09,z);scene.add(stripe)}
+road(0,0,8,110);road(0,0,110,7);road(-27,-24,5,48);road(27,24,5,48);
+const buildingMats=[mat(0xd9b98a),mat(0xe8d9b8),mat(0xc78f65),mat(0xd2d4c9)];
+function house(x,z,i){let g=new THREE.Group(),w=4+(i%3),h=2.8+(i%2)*.6,d=4;let body=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),buildingMats[i%4]);body.position.y=h/2;body.castShadow=true;g.add(body);let roof=new THREE.Mesh(new THREE.ConeGeometry(w*.78,1.3,4),mat(i%2?0x9e5741:0x8e493c));roof.position.y=h+.6;roof.rotation.y=Math.PI/4;roof.castShadow=true;g.add(roof);let door=new THREE.Mesh(new THREE.BoxGeometry(.8,1.6,.12),mat(0x533b2b));door.position.set(.4,.8,d/2+.07);g.add(door);g.position.set(x,0,z);scene.add(g)}
+let idx=0;for(let z=-42;z<=42;z+=14){for(let x of [-18,-10,10,18])house(x,z,idx++)}
+function tree(x,z){let g=new THREE.Group(),tr=new THREE.Mesh(new CylinderGeometry(.22,.32,2,7),mat(0x765039));tr.position.y=1;g.add(tr);let crown=new THREE.Mesh(new THREE.SphereGeometry(1.25,8,7),mat(0x477b42));crown.position.y=2.4;crown.scale.y=1.1;crown.castShadow=true;g.add(crown);g.position.set(x,0,z);scene.add(g)}
+for(let i=0;i<55;i++)tree((Math.random()-.5)*105,(Math.random()-.5)*105);
+function CylinderGeometry(...a){return new THREE.CylinderGeometry(...a)}
+// Community landmarks and glowing mission beacons
+const sites=[{name:'Community Garden',pos:[-14,0,-8],color:0x61e6a5},{name:'Water Point',pos:[14,0,-15],color:0x59cfff},{name:'Learning Centre',pos:[-15,0,17],color:0xffd16b},{name:'Playground',pos:[17,0,16],color:0xd69cff}];
+const beacons=[];
+sites.forEach((s,i)=>{let g=new THREE.Group();let base=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,.22,24),mat(0x273e47));base.position.y=.12;g.add(base);let orb=new THREE.Mesh(new THREE.SphereGeometry(.65,20,16),new THREE.MeshStandardMaterial({color:s.color,emissive:s.color,emissiveIntensity:1.4,roughness:.25}));orb.position.y=2.3;g.add(orb);let ring=new THREE.Mesh(new THREE.TorusGeometry(1.1,.07,8,32),new THREE.MeshBasicMaterial({color:s.color}));ring.rotation.x=Math.PI/2;ring.position.y=.3;g.add(ring);g.position.set(...s.pos);scene.add(g);beacons.push({group:g,orb,site:s,index:i})});
+function labelSprite(text){let c=document.createElement('canvas');c.width=512;c.height=128;let ctx=c.getContext('2d');ctx.fillStyle='#071c29dd';ctx.roundRect(4,4,504,120,24);ctx.fill();ctx.strokeStyle='#8beaf0';ctx.lineWidth=4;ctx.stroke();ctx.font='bold 34px sans-serif';ctx.fillStyle='white';ctx.textAlign='center';ctx.fillText(text,256,78);let tex=new THREE.CanvasTexture(c);let sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true}));sp.scale.set(5.5,1.4,1);return sp}
+sites.forEach(s=>{let sp=labelSprite(s.name);sp.position.set(s.pos[0],4.1,s.pos[2]);scene.add(sp)});
+const player=new THREE.Group();const body=new THREE.Mesh(new THREE.CapsuleGeometry(.48,.9,4,8),mat(0x287e91));body.position.y=1.05;body.castShadow=true;player.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.32,16,12),mat(0xc98e68));head.position.y=1.85;player.add(head);const hair=new THREE.Mesh(new THREE.SphereGeometry(.33,16,8,0,Math.PI*2,0,Math.PI/2),mat(0x262323));hair.position.y=2.02;player.add(hair);player.position.set(0,0,10);scene.add(player);
+let cameraYaw=0,keys={},move={x:0,z:0},touching=false,lastX=0;
+function modal(content){$('modalContent').innerHTML=content;$('modal').classList.add('open')}
+function missions(){let w=words[lang];let html=`<h2>${t('missionTitle')}</h2><p>${t('missionIntro')}</p>`;w.missions.forEach((m,i)=>html+=`<p> ${done.includes(i)?'✅':'🔹'} <b>${m}</b> — ${done.includes(i)?'Completed':'Visit the matching glowing marker'}</p>`);modal(html)}
+function challenge(i){let w=words[lang];if(done.includes(i)){toast(w.already);return}let opts=w.answers[i].map((a,j)=>`<button data-answer="${j}" style="margin:4px 0;text-align:left">${a}</button>`).join('');modal(`<h2>${w.missions[i]}</h2><p>${w.questions[i]}</p><div>${opts}</div>`);document.querySelectorAll('[data-answer]').forEach(b=>b.onclick=()=>{if(Number(b.dataset.answer)===w.correct[i]){done.push(i);score+=100;localStorage.setItem('sathana-score',score);localStorage.setItem('sathana-done',JSON.stringify(done));updateUI();modal(`<h2>✨ ${w.complete}</h2><p>+100 ${w.points}</p>`)}else toast(lang==='hi'?'फिर कोशिश करें!':'Try again!')})}
+function build(){let items=lang==='hi'?['पार्क','पुस्तकालय','साइकिल पथ','वर्षा जल संचयन']:['Park','Library','Cycle path','Rainwater harvesting'];modal(`<h2>${t('buildTitle')}</h2><p>${t('buildIntro')}</p><div class="grid">${items.map((x,i)=>`<button data-build="${i}">${['🌳','📚','🚲','💧'][i]} ${x}</button>`).join('')}</div>`);document.querySelectorAll('[data-build]').forEach(b=>b.onclick=()=>{score+=25;localStorage.setItem('sathana-score',score);updateUI();toast(t('buildDone'));$('modal').classList.remove('open')})}
+function nearest(){let best=null,dist=999;beacons.forEach(b=>{let d=player.position.distanceTo(b.group.position);if(d<dist){dist=d;best=b}});if(best&&dist<8)challenge(best.index);else toast(lang==='hi'?'किसी चमकते मार्कर के पास जाएँ।':'Move closer to a glowing marker.')}
+$('missionBtn').onclick=missions;$('buildBtn').onclick=build;$('aboutBtn').onclick=()=>modal(`<h2>${t('aboutTitle')}</h2><p>${t('about')}</p><p>Prototype v1.0 · Three.js · Progress stored on this device.</p>`);$('closeModal').onclick=()=>$('modal').classList.remove('open');$('interactBtn').onclick=nearest;$('actionBtn').onclick=nearest;$('resetBtn').onclick=()=>{if(confirm(lang==='hi'?'सारी प्रगति रीसेट करें?':'Reset all local progress?')){score=0;done=[];localStorage.removeItem('sathana-score');localStorage.removeItem('sathana-done');updateUI();toast(t('reset'))}};$('langBtn').onclick=()=>{lang=lang==='en'?'hi':'en';updateUI()};
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.code==='Space'){e.preventDefault();nearest()}});addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+let joy=$('joystick'),stick=$('stick'),joyVec={x:0,y:0};joy.addEventListener('pointerdown',e=>{joy.setPointerCapture(e.pointerId);touching=true;joyMove(e)});joy.addEventListener('pointermove',e=>{if(touching)joyMove(e)});joy.addEventListener('pointerup',()=>{touching=false;joyVec={x:0,y:0};stick.style.transform='translate(0,0)'});function joyMove(e){let r=joy.getBoundingClientRect(),x=e.clientX-(r.left+r.width/2),y=e.clientY-(r.top+r.height/2),len=Math.hypot(x,y),s=Math.min(34,len);if(len){joyVec={x:x/len*s/34,y:y/len*s/34}}stick.style.transform=`translate(${joyVec.x*34}px,${joyVec.y*34}px)`}
+let dragging=false;renderer.domElement.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'){dragging=true;lastX=e.clientX}});addEventListener('pointerup',()=>dragging=false);addEventListener('pointermove',e=>{if(dragging){cameraYaw-=(e.clientX-lastX)*.005;lastX=e.clientX}});
+$('jumpBtn').onclick=()=>{player.position.y=.5;setTimeout(()=>player.position.y=0,300)};
+const clock=new THREE.Clock();
+function animate(){requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.04);let x=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0)+joyVec.x;let z=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0)+joyVec.y;let len=Math.hypot(x,z);if(len>1){x/=len;z/=len}let forward=new THREE.Vector3(Math.sin(cameraYaw),0,Math.cos(cameraYaw)),right=new THREE.Vector3(forward.z,0,-forward.x);let dir=right.multiplyScalar(x).add(forward.multiplyScalar(z));if(dir.lengthSq()>.01){player.position.addScaledVector(dir,dt*8);player.rotation.y=Math.atan2(dir.x,dir.z)}player.position.x=THREE.MathUtils.clamp(player.position.x,-49,49);player.position.z=THREE.MathUtils.clamp(player.position.z,-49,49);let target=new THREE.Vector3(player.position.x-Math.sin(cameraYaw)*8,5.5,player.position.z-Math.cos(cameraYaw)*8);camera.position.lerp(target,1-Math.pow(.001,dt));camera.lookAt(player.position.x,1.2,player.position.z);beacons.forEach((b,i)=>{b.orb.position.y=2.2+Math.sin(clock.elapsedTime*2+i)*.22;b.orb.rotation.y+=dt});renderer.render(scene,camera)}
+camera.position.set(0,6,18);animate();updateUI();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body></html>
